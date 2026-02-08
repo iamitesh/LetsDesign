@@ -72,6 +72,7 @@ LetsDesign/
 | Layer        | Technology                                |
 |--------------|-------------------------------------------|
 | Framework    | React 18.3.1                              |
+| Routing      | `react-router-dom` (BrowserRouter)        |
 | Bundler      | Vite 7.3.1                                |
 | Federation   | `@originjs/vite-plugin-federation` 1.4.1  |
 | React Plugin | `@vitejs/plugin-react` 4.5.2              |
@@ -85,29 +86,53 @@ federation({
     reactRemote:  'http://localhost:5001/assets/remoteEntry.js',
     angularRemote: 'http://localhost:5002/assets/remoteEntry.js',
   },
-  shared: ['react', 'react-dom'],
+  shared: ['react', 'react-dom', 'react-router-dom'],
 })
 ```
 
 - **`remotes`**: URL-based resolution; the host fetches `remoteEntry.js` at runtime from each remote's preview server.
-- **`shared`**: `react` and `react-dom` are shared with `reactRemote` to avoid duplicate React runtimes.
+- **`shared`**: `react`, `react-dom`, and `react-router-dom` are shared to avoid duplicate runtimes.
 
-### 2.3 `App.jsx` — Root Component
+### 2.3 `main.jsx` — Entry Point with Router
+
+```jsx
+<BrowserRouter>
+  <App />
+</BrowserRouter>
+```
+
+The `BrowserRouter` is mounted at the entry point so that all components in `<App>` have access to React Router hooks and components.
+
+### 2.4 `App.jsx` — Root Component with Client-Side Routing
 
 ```
 <App>
-├── <h1> "Micro Frontend Host"
-├── <Suspense fallback="Loading React Widget...">
-│   └── <ReactWidget />          ← lazy(() => import('reactRemote/ReactWidget'))
-├── <hr />
-└── <AngularWidgetWrapper />     ← imperative mount/unmount
+├── <h1> "🏠 Host Shell App"
+├── <Nav />
+│   ├── <Link to="/">     🏠 Home
+│   ├── <Link to="/react"> ⚛️ React
+│   └── <Link to="/angular"> 🅰️ Angular
+│
+└── <Routes>
+    ├── <Route path="/"        element={<Home />} />
+    │   └── Landing page with navigation cards
+    │
+    ├── <Route path="/react"   element={<ReactPage />} />
+    │   └── <Suspense fallback="Loading...">
+    │       └── <ReactWidget />  ← lazy(() => import('reactRemote/ReactWidget'))
+    │
+    └── <Route path="/angular" element={<AngularPage />} />
+        └── <AngularWidgetWrapper />  ← imperative mount/unmount
 ```
 
 **Key Patterns:**
+- **Route-based loading**: Remotes are loaded on-demand only when the user navigates to the corresponding route, reducing initial bundle size.
 - `React.lazy` + `Suspense` for React remote (code-split with fallback).
 - `AngularWidgetWrapper` uses `useEffect` + `useRef` for imperative DOM manipulation.
+- Route change away from `/angular` triggers `useEffect` cleanup → Angular app destroyed.
+- Active link highlighting via `useLocation()` in `<Nav>`.
 
-### 2.4 `AngularWidgetWrapper.jsx` — Cross-Framework Bridge
+### 2.5 `AngularWidgetWrapper.jsx` — Cross-Framework Bridge
 
 This is the critical integration component:
 
@@ -293,14 +318,14 @@ export class AngularWidgetComponent {
 
 ### 5.1 Configuration Matrix
 
-| Property     | host-app         | react-remote-app          | angular-remote-app        |
-|-------------|------------------|---------------------------|---------------------------|
-| `name`      | `hostApp`        | `reactRemote`             | `angularRemote`           |
-| `filename`  | —                | `remoteEntry.js`          | `remoteEntry.js`          |
-| `remotes`   | ✅ (2 remotes)   | —                         | —                         |
-| `exposes`   | —                | `./ReactWidget`           | `./AngularWidget`         |
-| `shared`    | `react, react-dom` | `react, react-dom`      | `[]` (none)               |
-| Port        | 5000             | 5001                      | 5002                      |
+| Property     | host-app                          | react-remote-app          | angular-remote-app        |
+|-------------|-----------------------------------|---------------------------|---------------------------|
+| `name`      | `hostApp`                         | `reactRemote`             | `angularRemote`           |
+| `filename`  | —                                 | `remoteEntry.js`          | `remoteEntry.js`          |
+| `remotes`   | ✅ (2 remotes)                    | —                         | —                         |
+| `exposes`   | —                                 | `./ReactWidget`           | `./AngularWidget`         |
+| `shared`    | `react, react-dom, react-router-dom` | `react, react-dom`     | `[]` (none)               |
+| Port        | 5000                              | 5001                      | 5002                      |
 
 ### 5.2 Remote Entry Resolution
 
@@ -411,14 +436,15 @@ Angular cleanup function:
 
 ```
 Build Time:
-  Host:         shared: ['react', 'react-dom']
+  Host:         shared: ['react', 'react-dom', 'react-router-dom']
   ReactRemote:  shared: ['react', 'react-dom']
 
 Runtime:
-  1. Host loads, initializes shared scope with react@18.3.1
+  1. Host loads, initializes shared scope with react@18.3.1 + react-router-dom
   2. ReactRemote's remoteEntry.js checks shared scope
   3. Finds compatible react → reuses host's instance
-  4. Result: single React runtime in the page ✅
+  4. react-router-dom stays in host scope (not used by remotes)
+  5. Result: single React runtime in the page ✅
 ```
 
 ### 7.2 Angular Isolation (Angular Remote)
@@ -481,7 +507,7 @@ be running) before the host can successfully load them at runtime.
 
 ## 9. Sequence Diagrams
 
-### 9.1 Page Load — Full Sequence
+### 9.1 Initial Load — Home Page
 
 ```
 Browser              Host(:5000)        ReactRemote(:5001)    AngularRemote(:5002)
@@ -492,11 +518,29 @@ Browser              Host(:5000)        ReactRemote(:5001)    AngularRemote(:500
   │──GET /assets/main.js►│                     │                      │
   │◄─────JS bundle───────│                     │                      │
   │                      │                     │                      │
-  │  React renders <App/>│                     │                      │
+  │  React renders:      │                     │                      │
+  │  <BrowserRouter>     │                     │                      │
+  │    <App>             │                     │                      │
+  │      <Nav />         │                     │                      │
+  │      <Routes> → /    │                     │                      │
+  │        <Home />      │                     │                      │
+  │                      │  (no remote fetches — remotes load lazily) │
+  │◄── Home page rendered│                     │                      │
+```
+
+### 9.2 Navigate to /react
+
+```
+Browser              Host(:5000)        ReactRemote(:5001)    AngularRemote(:5002)
+  │                     │                     │                      │
+  │  User clicks        │                     │                      │
+  │  "⚛️ React" link     │                     │                      │
   │  ┌───────────────────┤                     │                      │
-  │  │ Suspense: lazy    │                     │                      │
-  │  │ import(reactRemote│                     │                      │
-  │  │ /ReactWidget)     │                     │                      │
+  │  │ Router matches    │                     │                      │
+  │  │ /react route      │                     │                      │
+  │  │ <ReactPage>       │                     │                      │
+  │  │  <Suspense>       │                     │                      │
+  │  │   lazy import()   │                     │                      │
   │  └──────────┬────────┤                     │                      │
   │             │        │──GET remoteEntry.js─►│                     │
   │             │        │◄────module map───────│                     │
@@ -505,39 +549,56 @@ Browser              Host(:5000)        ReactRemote(:5001)    AngularRemote(:500
   │  ┌──────────┘        │                     │                      │
   │  │ Renders ReactWidget                     │                      │
   │  └───────────────────┤                     │                      │
-  │                      │                     │                      │
-  │  AngularWidgetWrapper│                     │                      │
-  │  useEffect fires     │                     │                      │
+  │◄── /react rendered───┤                     │                      │
+```
+
+### 9.3 Navigate to /angular
+
+```
+Browser              Host(:5000)        ReactRemote(:5001)    AngularRemote(:5002)
+  │                     │                     │                      │
+  │  User clicks        │                     │                      │
+  │  "🅰️ Angular" link   │                     │                      │
   │  ┌───────────────────┤                     │                      │
-  │  │ import(angular    │                     │                      │
-  │  │ Remote/Angular    │                     │                      │
-  │  │ Widget)           │──GET remoteEntry.js─┼──────────────────────►│
-  │  │                   │◄────module map──────┼──────────────────────│
-  │  │                   │──GET bootstrap.js───┼──────────────────────►│
-  │  │                   │◄────mount()─────────┼──────────────────────│
-  │  │                   │                     │                      │
+  │  │ Router matches    │                     │                      │
+  │  │ /angular route    │                     │                      │
+  │  │ <AngularPage>     │                     │                      │
+  │  │  <AngularWidget   │                     │                      │
+  │  │   Wrapper>        │                     │                      │
+  │  │  useEffect fires  │                     │                      │
+  │  └──────────┬────────┤                     │                      │
+  │             │        │──GET remoteEntry.js──┼──────────────────────►│
+  │             │        │◄────module map───────┼──────────────────────│
+  │             │        │──GET bootstrap.js────┼──────────────────────►│
+  │             │        │◄────mount()──────────┼──────────────────────│
+  │  ┌──────────┘        │                     │                      │
   │  │ mount(container)  │                     │                      │
-  │  │ → createApplication()                   │                      │
-  │  │ → createCustomElement()                 │                      │
-  │  │ → <angular-widget/> appended            │                      │
+  │  │ → createApp()     │                     │                      │
+  │  │ → customElement() │                     │                      │
+  │  │ → <angular-widget>│                     │                      │
   │  └───────────────────┤                     │                      │
-  │                      │                     │                      │
-  │◄─── Full UI rendered─┤                     │                      │
+  │◄── /angular rendered─┤                     │                      │
 ```
 
-### 9.2 Angular Widget Unmount
+### 9.4 Route Change Cleanup (leaving /angular)
 
 ```
-React unmount (navigation, conditional render, etc.)
+User clicks "⚛️ React" or "🏠 Home" while on /angular
   │
-  ├── useEffect cleanup fires
-  │   ├── widgetEl.remove()      → Custom Element removed from DOM
-  │   └── appRef.destroy()       → Angular ApplicationRef destroyed
-  │       ├── Zone.js unpatched
-  │       ├── Change detection stopped
-  │       └── Component instance garbage collected
+  ├── React Router unmounts <AngularPage>
+  │   ├── <AngularWidgetWrapper> unmounts
+  │   ├── useEffect cleanup fires
+  │   │   ├── cleanupRef.current() called
+  │   │   │   ├── widgetEl.remove()      → Custom Element removed from DOM
+  │   │   │   └── appRef.destroy()       → Angular ApplicationRef destroyed
+  │   │   │       ├── Zone.js unpatched
+  │   │   │       ├── Change detection stopped
+  │   │   │       └── Component instance garbage collected
+  │   │   └── mounted = false (prevents late async mounts)
+  │   └── Container div removed by React
   │
-  └── Container div removed by React
+  ├── React Router mounts new route component
+  └── No Angular resources remain in memory ✅
 ```
 
 ---
@@ -546,13 +607,17 @@ React unmount (navigation, conditional render, etc.)
 
 ### 10.1 Host App
 
-| File                           | Purpose                                   | Exports                |
-|-------------------------------|-------------------------------------------|------------------------|
-| `vite.config.js`              | Vite + federation host config             | default config         |
-| `src/main.jsx`                | React 18 createRoot entry                 | —                      |
-| `src/App.jsx`                 | Root component, composes remotes          | `App` (default)        |
-| `src/App.css`                 | Root component styles                     | —                      |
-| `src/components/AngularWidgetWrapper.jsx` | React↔Angular bridge           | `AngularWidgetWrapper` |
+| File                           | Purpose                                        | Exports                |
+|-------------------------------|------------------------------------------------|------------------------|
+| `vite.config.js`              | Vite + federation host config                  | default config         |
+| `src/main.jsx`                | React 18 createRoot + BrowserRouter entry       | —                      |
+| `src/App.jsx`                 | Root component with routes (`/`, `/react`, `/angular`) | `App` (default)  |
+| `src/App.jsx` → `Nav`         | Navigation bar with active-link highlighting   | (internal)             |
+| `src/App.jsx` → `Home`        | Landing page with navigation cards             | (internal)             |
+| `src/App.jsx` → `ReactPage`   | Route wrapper for React remote widget          | (internal)             |
+| `src/App.jsx` → `AngularPage` | Route wrapper for Angular remote widget        | (internal)             |
+| `src/App.css`                 | Root component styles                          | —                      |
+| `src/components/AngularWidgetWrapper.jsx` | React↔Angular bridge                | `AngularWidgetWrapper` |
 
 ### 10.2 React Remote
 
@@ -581,13 +646,13 @@ React unmount (navigation, conditional render, etc.)
 ### 11.1 Remote Load Failure (React Remote)
 
 ```jsx
-// App.jsx
-<Suspense fallback={<div>Loading React Widget...</div>}>
+// App.jsx — /react route
+<Suspense fallback={<p>Loading React Remote Widget...</p>}>
   <ReactWidget />
 </Suspense>
 ```
 
-If `reactRemote/ReactWidget` fails to load (network error, 404), React's `Suspense` boundary shows the fallback. Adding an `ErrorBoundary` wrapper would enable graceful error recovery.
+If `reactRemote/ReactWidget` fails to load (network error, 404), React's `Suspense` boundary shows the fallback. The failure is isolated to the `/react` route — the host shell and navigation remain functional. Adding an `ErrorBoundary` wrapper would enable graceful error recovery.
 
 ### 11.2 Remote Load Failure (Angular Remote)
 
@@ -630,6 +695,7 @@ Prevents `DOMException: Failed to execute 'define'` if the Custom Element is alr
 | `vite`                               | 7.3.1    | All apps             |
 | `react`                              | 18.3.1   | host, react-remote   |
 | `react-dom`                          | 18.3.1   | host, react-remote   |
+| `react-router-dom`                   | ^7.x     | host                 |
 | `@angular/core`                      | 19.2.18  | angular-remote       |
 | `@angular/elements`                  | 19.2.8   | angular-remote       |
 | `@analogjs/vite-plugin-angular`      | 2.2.3    | angular-remote       |

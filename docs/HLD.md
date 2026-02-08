@@ -13,13 +13,20 @@
                              ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │                     HOST SHELL APP (React)                        │
-│                        Port 5000                                 │
+│                    Port 5000 + React Router                      │
 │                                                                  │
-│  ┌────────────────────┐          ┌─────────────────────────┐     │
-│  │   React Remote      │◄────────│   Angular Remote         │     │
-│  │   Widget (lazy)     │  MF     │   Widget (Web Component) │     │
-│  └────────┬───────────┘          └──────────┬──────────────┘     │
-└───────────┼──────────────────────────────────┼───────────────────┘
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │ Nav:  [🏠 Home]  [⚛️ React]  [🅰️ Angular]               │    │
+│  └──────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  Routes:                                                         │
+│  ┌────────────────────────────────────────────────────────────┐  │
+│  │ /         → Home page (navigation cards)                   │  │
+│  │ /react    → ReactWidget (lazy-loaded via MF)               │  │
+│  │ /angular  → AngularWidgetWrapper (mount via MF + WC)       │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                                                                  │
+└───────────┬──────────────────────────────────┬───────────────────┘
             │ remoteEntry.js                   │ remoteEntry.js
             ▼                                  ▼
 ┌────────────────────┐            ┌─────────────────────────┐
@@ -37,7 +44,8 @@
 |----------------------|-----------------------------------------------------|
 | Pattern              | **Micro Frontends** (runtime composition)           |
 | Integration          | **Module Federation** (Vite Plugin Federation)      |
-| Shell/Host           | React 18 SPA                                        |
+| Shell/Host           | React 18 SPA with **React Router** (client-side routing) |
+| Routing              | `/` Home · `/react` React Remote · `/angular` Angular Remote |
 | Remote 1             | React 18 SPA (shared runtime with host)             |
 | Remote 2             | Angular 19 (bridged via Web Components / Angular Elements) |
 | Bundler              | **Vite 7** across all apps                          |
@@ -87,22 +95,33 @@ Angular Component → createCustomElement() → <angular-widget> → DOM
 ## 5. Communication Flow
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    HOST APP                          │
-│                                                     │
-│  1. Browser loads host at :5000                     │
-│  2. React renders <App />                           │
-│  3. <Suspense> lazy-loads reactRemote/ReactWidget   │
-│     → fetches :5001/assets/remoteEntry.js           │
-│     → resolves ./ReactWidget module                 │
-│     → renders as normal React component             │
-│  4. <AngularWidgetWrapper /> mounts                 │
-│     → dynamic import('angularRemote/AngularWidget') │
-│     → fetches :5002/assets/remoteEntry.js           │
-│     → calls mount(containerDiv)                     │
-│     → Angular bootstraps & creates custom element   │
-│     → <angular-widget> appended to DOM              │
-└─────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                    HOST APP                               │
+│                                                          │
+│  1. Browser loads host at :5000                          │
+│  2. React renders <BrowserRouter> → <App />              │
+│  3. <Nav /> renders navigation links: Home, React, Angular│
+│  4. <Routes> matches current path:                       │
+│                                                          │
+│     /         → <Home /> landing page with nav cards     │
+│                                                          │
+│     /react    → <ReactPage />                            │
+│                 <Suspense> lazy-loads ReactWidget         │
+│                 → fetches :5001/assets/remoteEntry.js     │
+│                 → resolves ./ReactWidget module           │
+│                 → renders as normal React component       │
+│                                                          │
+│     /angular  → <AngularPage />                          │
+│                 <AngularWidgetWrapper /> mounts           │
+│                 → import('angularRemote/AngularWidget')   │
+│                 → fetches :5002/assets/remoteEntry.js     │
+│                 → calls mount(containerDiv)               │
+│                 → Angular bootstraps custom element       │
+│                                                          │
+│  5. Route change → React Router unmounts previous page   │
+│     → Angular cleanup runs if leaving /angular           │
+│     → Remote only loaded when user navigates to route    │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -130,12 +149,13 @@ Each app is **independently deployable** as static assets. The host resolves rem
 
 ## 7. Shared Dependencies Strategy
 
-| Dependency        | Shared Between          | Strategy                    |
-|-------------------|-------------------------|-----------------------------|
-| `react`           | Host ↔ React Remote     | Singleton, same version     |
-| `react-dom`       | Host ↔ React Remote     | Singleton, same version     |
-| `zone.js`         | Angular Remote only     | Not shared (self-contained) |
-| `@angular/*`      | Angular Remote only     | Not shared (self-contained) |
+| Dependency          | Shared Between          | Strategy                    |
+|---------------------|-------------------------|-----------------------------|
+| `react`             | Host ↔ React Remote     | Singleton, same version     |
+| `react-dom`         | Host ↔ React Remote     | Singleton, same version     |
+| `react-router-dom`  | Host (only)             | Shared scope, host-only     |
+| `zone.js`           | Angular Remote only     | Not shared (self-contained) |
+| `@angular/*`        | Angular Remote only     | Not shared (self-contained) |
 
 Angular remote does **not** share dependencies with the host because frameworks are incompatible. It is fully self-contained.
 
