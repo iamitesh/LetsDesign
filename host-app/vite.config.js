@@ -7,11 +7,7 @@ export default defineConfig({
       name: 'host-app',
       remotes: {
         reactApp: 'http://localhost:5001/assets/remoteEntry.js',
-        angularApp: {
-          external: 'http://localhost:5002/remoteEntry.json',
-          format: 'esm',
-          from: 'vite'
-        }
+        angularApp: 'http://localhost:5002/remoteEntry.js'
       },
       shared: ['react', 'react-dom']
     })

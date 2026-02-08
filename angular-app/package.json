@@ -6,7 +6,8 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "run:all": "node node_modules/@angular-architects/module-federation/src/server/mf-dev-server.js"
   },
   "prettier": {
     "printWidth": 100,
@@ -23,25 +24,23 @@
   "private": true,
   "packageManager": "npm@11.6.2",
   "dependencies": {
-    "@angular-architects/native-federation": "^19.0.23",
-    "@angular/animations": "^21.1.0",
     "@angular/common": "^21.1.0",
     "@angular/compiler": "^21.1.0",
     "@angular/core": "^21.1.0",
     "@angular/forms": "^21.1.0",
     "@angular/platform-browser": "^21.1.0",
     "@angular/router": "^21.1.0",
-    "@softarc/native-federation-node": "^2.0.10",
-    "es-module-shims": "^1.5.12",
     "rxjs": "~7.8.0",
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "zone.js": "^0.16.0"
   },
   "devDependencies": {
-    "@angular-architects/module-federation": "^20.0.0",
+    "@angular-architects/module-federation": "^18.0.6",
     "@angular/build": "^21.1.3",
     "@angular/cli": "^21.1.3",
     "@angular/compiler-cli": "^21.1.0",
     "jsdom": "^27.1.0",
+    "ngx-build-plus": "^18.0.0",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8"
   }

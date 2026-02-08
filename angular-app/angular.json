@@ -14,48 +14,27 @@
 			"prefix": "app",
 			"architect": {
 				"build": {
-					"builder": "@angular-architects/native-federation:build",
-					"options": {},
-					"configurations": {
-						"production": {
-							"target": "angular-app:esbuild:production"
-						},
-						"development": {
-							"target": "angular-app:esbuild:development",
-							"dev": true
-						}
-					},
-					"defaultConfiguration": "production"
-				},
-				"serve": {
-					"builder": "@angular-architects/native-federation:build",
+					"builder": "ngx-build-plus:browser",
 					"options": {
-						"target": "angular-app:serve-original:development",
-						"rebuildDelay": 0,
-						"dev": true,
-						"port": 0
-					}
-				},
-				"test": {
-					"builder": "@angular/build:unit-test"
-				},
-				"esbuild": {
-					"builder": "@angular-devkit/build-angular:application",
-					"options": {
-						"browser": "src/main.ts",
+						"outputPath": "dist/angular-app",
+						"index": "src/index.html",
+						"polyfills": [
+							"zone.js"
+						],
 						"tsConfig": "tsconfig.app.json",
 						"assets": [
 							{
 								"glob": "**/*",
-								"input": "public"
+								"input": "public",
+								"output": "."
 							}
 						],
 						"styles": [
 							"src/styles.css"
 						],
-						"polyfills": [
-							"es-module-shims"
-						]
+						"main": "src/main.ts",
+						"extraWebpackConfig": "webpack.config.js",
+						"commonChunk": false
 					},
 					"configurations": {
 						"production": {
@@ -71,7 +50,8 @@
 									"maximumError": "8kB"
 								}
 							],
-							"outputHashing": "all"
+							"outputHashing": "all",
+							"extraWebpackConfig": "webpack.prod.config.js"
 						},
 						"development": {
 							"optimization": false,
@@ -81,20 +61,26 @@
 					},
 					"defaultConfiguration": "production"
 				},
-				"serve-original": {
-					"builder": "@angular/build:dev-server",
+				"serve": {
+					"builder": "ngx-build-plus:dev-server",
 					"configurations": {
 						"production": {
-							"buildTarget": "angular-app:esbuild:production"
+							"buildTarget": "angular-app:build:production",
+							"extraWebpackConfig": "webpack.prod.config.js"
 						},
 						"development": {
-							"buildTarget": "angular-app:esbuild:development"
+							"buildTarget": "angular-app:build:development"
 						}
 					},
 					"defaultConfiguration": "development",
 					"options": {
-						"port": 5002
+						"port": 5002,
+						"publicHost": "http://localhost:5002",
+						"extraWebpackConfig": "webpack.config.js"
 					}
+				},
+				"test": {
+					"builder": "@angular/build:unit-test"
 				}
 			}
 		}
