@@ -1,0 +1,33 @@
+.react-component {
+  padding: 20px;
+  border: 2px solid #61dafb;
+  border-radius: 8px;
+  background-color: #282c34;
+  color: white;
+  margin: 20px 0;
+}
+
+.react-component h2 {
+  color: #61dafb;
+  margin-bottom: 10px;
+}
+
+.react-component button {
+  background-color: #61dafb;
+  color: #282c34;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: background-color 0.3s;
+}
+
+.react-component button:hover {
+  background-color: #4fa8c5;
+}
+
+.react-component p {
+  margin: 10px 0;
+}
