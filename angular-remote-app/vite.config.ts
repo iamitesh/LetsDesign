@@ -19,6 +19,9 @@ export default defineConfig({
     target: 'esnext',
     minify: false,
     cssCodeSplit: false,
+    rollupOptions: {
+      preserveEntrySignatures: 'strict',
+    },
   },
   server: {
     port: 5002,
