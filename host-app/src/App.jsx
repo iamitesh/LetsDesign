@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import AngularWidgetWrapper from './components/AngularWidgetWrapper.jsx';
+import NextWidgetWrapper from './components/NextWidgetWrapper.jsx';
 
 const ReactWidget = lazy(() => import('reactRemote/ReactWidget'));
 
@@ -27,6 +28,7 @@ const Nav = () => {
       <Link to="/" style={linkStyle('/')}>🏠 Home</Link>
       <Link to="/react" style={linkStyle('/react')}>⚛️ React</Link>
       <Link to="/angular" style={linkStyle('/angular')}>🅰️ Angular</Link>
+      <Link to="/next" style={linkStyle('/next')}>▲ Next.js</Link>
     </nav>
   );
 };
@@ -36,7 +38,7 @@ const Home = () => (
     <h2 style={{ color: '#555' }}>Welcome</h2>
     <p style={{ color: '#666', fontSize: '16px', lineHeight: 1.6 }}>
       This is the host shell application. Use the navigation above to load
-      micro-frontends from independently deployed React and Angular remote apps.
+      micro-frontends from independently deployed React, Angular, and Next.js remote apps.
     </p>
     <div style={{ display: 'flex', gap: '16px', marginTop: '20px' }}>
       <Link to="/react" style={{
@@ -50,6 +52,12 @@ const Home = () => (
         border: '2px solid #dd0031', textDecoration: 'none', color: '#333', fontWeight: 600,
       }}>
         🅰️ View Angular Remote
+      </Link>
+      <Link to="/next" style={{
+        padding: '16px 32px', borderRadius: '12px', background: '#00000011',
+        border: '2px solid #000', textDecoration: 'none', color: '#333', fontWeight: 600,
+      }}>
+        ▲ View Next.js Remote
       </Link>
     </div>
   </section>
@@ -71,6 +79,13 @@ const AngularPage = () => (
   </section>
 );
 
+const NextPage = () => (
+  <section style={{ marginTop: '24px' }}>
+    <h2 style={{ color: '#000' }}>▲ Next.js Remote Micro-Frontend</h2>
+    <NextWidgetWrapper />
+  </section>
+);
+
 const App = () => {
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '960px', margin: '0 auto' }}>
@@ -82,6 +97,7 @@ const App = () => {
         <Route path="/" element={<Home />} />
         <Route path="/react" element={<ReactPage />} />
         <Route path="/angular" element={<AngularPage />} />
+        <Route path="/next" element={<NextPage />} />
       </Routes>
     </div>
   );

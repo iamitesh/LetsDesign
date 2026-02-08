@@ -10,6 +10,7 @@ export default defineConfig({
       remotes: {
         reactRemote: 'http://localhost:5001/assets/remoteEntry.js',
         angularRemote: 'http://localhost:5002/assets/remoteEntry.js',
+        nextRemote: 'http://localhost:5003/_next/static/chunks/remoteEntry.js',
       },
       shared: ['react', 'react-dom', 'react-router-dom'],
     }),
